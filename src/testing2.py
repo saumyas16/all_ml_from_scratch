@@ -1,4 +1,4 @@
-from .regression import linear_regression
+from .linear_regression import LinearRegression
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -10,10 +10,15 @@ y = housing.target
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=36)
 
-coef, intercept, mse = linear_regression(X_train, y_train)
+lin_reg = LinearRegression()
+lin_reg.fit(X_train, y_train)
 
-print(coef)
-print(intercept)
+print(lin_reg.coef_)
+print(lin_reg.intercept_)
+
+y_pred = lin_reg.predict(X_test)
+print(y)
+print(y_pred)
 
 # AveRooms    -0.179497
 # MedInc       0.515162
