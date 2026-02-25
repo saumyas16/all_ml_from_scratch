@@ -23,7 +23,7 @@ print("Ridge Regression:")
 print(ridge_reg.coef_)
 print(ridge_reg.intercept_)
 
-lasso_reg = LinearRegression(lasso_alpha=0.3)
+lasso_reg = LinearRegression(lasso_alpha=0.1, l1_ratio=1)
 lasso_reg.fit(X_train, y_train)
 
 print("Lasso Regression:")
@@ -41,10 +41,10 @@ print(elastic_net.intercept_)
 # Ridge Regression:
 # [-0.49522355  1.0059868   0.200353    0.45162886 -0.04509436]
 # 2.066487821162555
-# Converged at  39846 th step
+# Converged at  5630 th step
 # Lasso Regression:
-# [-0.49527914  1.00601406  0.200353    0.45168087 -0.04509508]
-# 2.0664878387899606
+# [ 6.17906680e-05  7.06624121e-01  1.06936025e-01  7.16709939e-06 -1.14529272e-04]
+# 2.060571255333859
 # Converged at  4377 th step
 # ElasticNet Regression:
 # [ 5.70325816e-06  7.55822341e-01  1.66388294e-01 -1.64102359e-05 -2.60158577e-05]
