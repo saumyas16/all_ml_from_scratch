@@ -55,3 +55,12 @@ class LogisticRegression:
         accuracy = np.mean(y_class == y) * 100
         self.coef_ = weights
         self.accuracy_ = accuracy
+
+    def predict(self, X):
+        if not isinstance(X, np.ndarray):
+            X = np.array(X)
+        n, w = X.shape
+        X = np.c_[np.ones(n), X]
+        y_pred = X @ self.coef_
+        y_pred = (y_pred >= 0.5).astype(int)
+        return y_pred
