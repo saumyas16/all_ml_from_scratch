@@ -18,10 +18,13 @@ class LinearRegression:
         bias = float(np.random.rand())
         return weights, bias
 
-    def backtacking(self, weights, new_weights, avg_weights, loss, prev_loss, av_loss, av_grad_by_w, av_grad_by_b, grad_by_w, grad_by_b):
+    def backtacking(self, new_weights, avg_weights, new_bias, avg_bias, loss, prev_loss, av_loss, av_grad_by_w, av_grad_by_b, grad_by_w, grad_by_b):
         if (prev_loss < loss):
-            return avg_weights, av_grad_by_w, av_grad_by_b
-        return new_weights, grad_by_w, grad_by_b
+            self.rate /= 10
+            return avg_weights, avg_bias, av_grad_by_w, av_grad_by_b, av_loss
+        if (loss < prev_loss) and (av_loss < loss):
+            return avg_weights, avg_bias, av_grad_by_w, av_grad_by_b, av_loss
+        return new_weights, new_bias, grad_by_w, grad_by_b, loss
 
     def gradient_descent(grad_by_w, grad_by_b, weights, bias, rate):
         weights = weights - rate * grad_by_w
@@ -50,7 +53,7 @@ class LinearRegression:
 
         i = 1
         tolerance = 1e-8
-        max_iters = 100000
+        max_iters = 50000
         prev_loss = float("inf")
 
         rmse, loss, grad_by_w, grad_by_b = LinearRegression.loss_function(y_pred, y, self.lnorm_type, numExamples, X, weights, self.ridge_alpha, self.lasso_alpha, self.l1_ratio)
@@ -64,12 +67,19 @@ class LinearRegression:
 
             rmse, loss, grad_by_w, grad_by_b = LinearRegression.loss_function(y_pred, y, self.lnorm_type, numExamples, X, new_weights, self.ridge_alpha, self.lasso_alpha, self.l1_ratio)
 
+            # if loss < prev_loss:
             avg_weights = (new_weights+weights)/2
-            av_rmse, av_loss, av_grad_by_w, av_grad_by_b = LinearRegression.loss_function(y_pred, y, self.lnorm_type, numExamples, X, avg_weights, self.ridge_alpha, self.lasso_alpha, self.l1_ratio)
+            avg_bias = (bias+new_bias)/2
+            avg_y_pred = X @ avg_weights + avg_bias
+            av_rmse, av_loss, av_grad_by_w, av_grad_by_b = LinearRegression.loss_function(avg_y_pred, y, self.lnorm_type, numExamples, X, avg_weights, self.ridge_alpha, self.lasso_alpha,
+                                                                                          self.l1_ratio)
 
-            weights, grad_by_w, grad_by_b = LinearRegression.backtacking(weights, new_weights, avg_weights, loss, prev_loss, av_loss, av_grad_by_w, av_grad_by_b, grad_by_w, grad_by_b)
+            weights, bias, grad_by_w, grad_by_b, loss = LinearRegression.backtacking(self, new_weights, avg_weights, new_bias, avg_bias, loss, prev_loss, av_loss, av_grad_by_w, av_grad_by_b,
+                                                                                     grad_by_w, grad_by_b)
 
-        print("Converged at ", i, "th step")
+            if (i % 1000 == 0):
+                print("At step ", i)
+
         self.coef_ = weights
         self.intercept_ = bias
         self.rmse_ = rmse
