@@ -1,22 +1,32 @@
 import numpy as np
+import math
 
 
 class DecisionTreeClassifier:
-    def __init__(self, max_depth=2, rate=0.0005):
+    def __init__(self, max_depth=2, rate=0.0005, criterion="gini"):
         self.coef_ = None
         self.accuracy_ = None
         self.depth = max_depth
         self.split_info = {}
         self.tree_ = None
+        self.criterion = criterion
 
     @staticmethod
-    def gini_impurity(node_y, k):
+    def impurity_measure(node_y, k, criterion):
         node_size = node_y.size
-        gini = 1.0
-        for i in range(k):
-            p_i = np.sum(node_y == i) / node_size
-            gini -= p_i ** 2
-        return gini
+        if criterion == "gini":
+            gini = 1.0
+            for i in range(k):
+                p_i = np.sum(node_y == i) / node_size
+                gini -= p_i ** 2
+            return gini
+        else:
+            entropy = 0.0
+            for i in range(k):
+                p_i = np.sum(node_y == i) / node_size
+                if p_i > 0:
+                    entropy -= p_i * math.log2(p_i)
+            return entropy
 
     @staticmethod
     def node_label(node_y, k):
@@ -30,17 +40,17 @@ class DecisionTreeClassifier:
         return max_k
 
     @staticmethod
-    def cost_function(node_X, node_y, k, feature_idx, feature_threshold):
+    def cost_function(node_X, node_y, k, feature_idx, feature_threshold, criterion):
         node_left = node_y[node_X[:, feature_idx] <= feature_threshold]
         node_right = node_y[node_X[:, feature_idx] > feature_threshold]
 
         if node_left.size == 0 or node_right.size == 0:
             return 1
 
-        gini_left = DecisionTreeClassifier.gini_impurity(node_left, k)
-        gini_right = DecisionTreeClassifier.gini_impurity(node_right, k)
+        impurity_left = DecisionTreeClassifier.impurity_measure(node_left, k, criterion)
+        impurity_right = DecisionTreeClassifier.impurity_measure(node_right, k, criterion)
 
-        cost_value = ((node_left.size)*gini_left + (node_right.size)*gini_right)/node_y.size
+        cost_value = ((node_left.size)*impurity_left + (node_right.size)*impurity_right)/node_y.size
         return cost_value
 
     @staticmethod
@@ -58,13 +68,14 @@ class DecisionTreeClassifier:
         elif np.unique(y).size == 1:
             return {"label": y[0]}
         else:
-            best_cost = 1.0
+            # best_cost = 1.0 # works for gini but not entropy
+            best_cost = float("inf")
             splitinfo = {}
 
             for p in range(0, numFeatures):
                 thresholds = DecisionTreeClassifier.threshold_list(X[:, p])
                 for feature_threshold in thresholds:
-                    i_cost = DecisionTreeClassifier.cost_function(X, y, k, p, feature_threshold)
+                    i_cost = DecisionTreeClassifier.cost_function(X, y, k, p, feature_threshold, self.criterion)
                     if i_cost < best_cost:
                         best_cost = i_cost
                         splitinfo = {"feature": p, "threshold": feature_threshold, "left": None, "right": None}
@@ -83,7 +94,8 @@ class DecisionTreeClassifier:
         numExamples, numFeatures = X.shape
         k = np.unique(y).size
 
-        self.tree_ = DecisionTreeClassifier.split_examples(self, self.depth, X, y, k, numFeatures, 1)
+        root_cost = DecisionTreeClassifier.impurity_measure(y, k, self.criterion)  # root cost to handle entropy, gini could be capped at 1
+        self.tree_ = DecisionTreeClassifier.split_examples(self, self.depth, X, y, k, numFeatures, root_cost)
 
     def _predict_one(self, x, node):
         if "label" in node:
