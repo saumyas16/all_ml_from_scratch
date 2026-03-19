@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier
-from .CART_decision_tree import DecisionTreeClassifier as MyDTC
+from src.lib.CART_decision_tree import DecisionTreeClassifier as MyDTC
 
 iris = load_iris(as_frame=True)
 X = iris.data[["petal length (cm)", "petal width (cm)"]].values

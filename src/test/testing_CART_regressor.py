@@ -1,6 +1,6 @@
 from sklearn.tree import DecisionTreeRegressor
 import numpy as np
-from .CART_regressor import DecisionTreeRegressor as MyDTR
+from src.lib.CART_regressor import DecisionTreeRegressor as MyDTR
 
 rng = np.random.default_rng(seed=42)
 X_quad = rng.random((200, 1)) - 0.5

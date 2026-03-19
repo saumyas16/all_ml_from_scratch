@@ -1,4 +1,4 @@
-from .gradient_descent_backtacking import LinearRegression as BackTrackLR
+from src.lib.gradient_descent_backtacking import LinearRegression as BackTrackLR
 
 import pandas as pd
 from sklearn.model_selection import train_test_split

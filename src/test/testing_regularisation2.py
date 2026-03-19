@@ -1,4 +1,4 @@
-from .linear_regression import LinearRegression
+from src.lib.linear_regression import LinearRegression
 
 import pandas as pd
 from sklearn.model_selection import train_test_split

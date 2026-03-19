@@ -1,8 +1,8 @@
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
-from .softmax_regression import LogisticRegression as MySR
-from .logistic_regression import LogisticRegression as MyLR
+from src.lib.softmax_regression import LogisticRegression as MySR
+from src.lib.logistic_regression import LogisticRegression as MyLR
 
 iris = load_iris(as_frame=True)
 X = iris.data[["sepal length (cm)", "sepal width (cm)", "petal length (cm)", "petal width (cm)"]].values

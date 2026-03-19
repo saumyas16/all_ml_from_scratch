@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import fetch_california_housing
 from sklearn.linear_model import SGDRegressor
 from sklearn.preprocessing import StandardScaler
-from .sgd_linear_regression import SGDLinearRegression
+from src.lib.sgd_linear_regression import SGDLinearRegression
 
 housing = fetch_california_housing()
 scaler = StandardScaler()
