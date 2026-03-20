@@ -4,8 +4,6 @@ import math
 
 class DecisionTreeClassifier:
     def __init__(self, max_depth=2, criterion="gini", min_samples_split=2):
-        self.coef_ = None
-        self.accuracy_ = None
         self.max_depth = max_depth
         self.split_info = {}
         self.tree_ = None
@@ -41,6 +39,14 @@ class DecisionTreeClassifier:
         return max_k
 
     @staticmethod
+    def node_label_probability(node_y, k):
+        k_proba = []
+        for i in range(k):
+            class_count = np.sum(node_y == i)
+            k_proba.append(class_count/node_y.size)
+        return np.asarray(k_proba)
+
+    @staticmethod
     def cost_function(node_X, node_y, k, feature_idx, feature_threshold, criterion):
         node_left = node_y[node_X[:, feature_idx] <= feature_threshold]
         node_right = node_y[node_X[:, feature_idx] > feature_threshold]
@@ -64,10 +70,13 @@ class DecisionTreeClassifier:
 
     def split_examples(self, max_depth, X, y, k, numFeatures, prev_cost, depth, min_split_samples):
         label_node = DecisionTreeClassifier.node_label(y, k)
+        label_probability = DecisionTreeClassifier.node_label_probability(y, k)
         if max_depth is not None and depth >= max_depth:
-            return {"label": label_node}
+            return {"label": label_node, "label probability": label_probability}
+        elif X.size < min_split_samples:
+            return {"label": label_node, "label probability": label_probability}
         elif np.unique(y).size == 1:
-            return {"label": y[0]}
+            return {"label": y[0], "label probability": 1.0}
         else:
             # best_cost = 1.0 # works for gini but not entropy
             best_cost = float("inf")
@@ -82,9 +91,9 @@ class DecisionTreeClassifier:
                         splitinfo = {"feature": p, "threshold": feature_threshold, "left": None, "right": None}
 
             if best_cost >= prev_cost:
-                return {"label": label_node}
-            if not splitinfo or X.size < min_split_samples:
-                return {"label": label_node}
+                return {"label": label_node, "label_probability": label_probability}
+            if not splitinfo:
+                return {"label": label_node, "label_probability": label_probability}
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
             splitinfo["left"] = DecisionTreeClassifier.split_examples(self, max_depth, X[decision_boundary], y[decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)
             splitinfo["right"] = DecisionTreeClassifier.split_examples(self, max_depth, X[~decision_boundary], y[~decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)
@@ -110,10 +119,30 @@ class DecisionTreeClassifier:
             else:
                 return self._predict_one(x, node["right"])
 
+    def _predict_one_proba(self, x, node):
+        if "label probability" in node:
+            return node["label probability"]
+        else:
+            feature = node["feature"]
+            threshold = node["threshold"]
+
+            if x[feature] <= threshold:
+                return self._predict_one_proba(x, node["left"])
+            else:
+                return self._predict_one_proba(x, node["right"])
+
     def predict(self, X):
         predictions = []
         for x in X:
             pred = self._predict_one(x, self.tree_)
+            predictions.append(pred)
+
+        return np.array(predictions)
+
+    def predict_proba(self, X):
+        predictions = []
+        for x in X:
+            pred = self._predict_one_proba(x, self.tree_)
             predictions.append(pred)
 
         return np.array(predictions)

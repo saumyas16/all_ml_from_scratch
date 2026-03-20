@@ -3,8 +3,6 @@ import numpy as np
 
 class DecisionTreeRegressor:
     def __init__(self, max_depth=2, min_samples_split=2):
-        self.coef_ = None
-        self.accuracy_ = None
         self.max_depth = max_depth
         self.split_info = {}
         self.tree_ = None
