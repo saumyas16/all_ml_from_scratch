@@ -1,14 +1,16 @@
 import numpy as np
 import math
+import random
 
 
 class DecisionTreeClassifier:
-    def __init__(self, max_depth=2, criterion="gini", min_samples_split=2):
+    def __init__(self, max_features=1, max_depth=2, criterion="gini", min_samples_split=2):
         self.max_depth = max_depth
         self.split_info = {}
         self.tree_ = None
         self.criterion = criterion
         self.min_samples_split = min_samples_split
+        self.max_features = max_features
 
     @staticmethod
     def impurity_measure(node_y, k, criterion):
@@ -68,7 +70,7 @@ class DecisionTreeClassifier:
             threshold.append((X[i]+X[i+1])/2)
         return np.unique(threshold)
 
-    def split_examples(self, max_depth, X, y, k, numFeatures, prev_cost, depth, min_split_samples):
+    def split_examples(self, max_depth, X, y, k, numFeatures, prev_cost, depth, min_split_samples, max_features):
         label_node = DecisionTreeClassifier.node_label(y, k)
         label_probability = DecisionTreeClassifier.node_label_probability(y, k)
         if max_depth is not None and depth >= max_depth:
@@ -82,7 +84,8 @@ class DecisionTreeClassifier:
             best_cost = float("inf")
             splitinfo = {}
 
-            for p in range(0, numFeatures):
+            feature_subset = random.sample(range(numFeatures), max_features)
+            for p in feature_subset:
                 thresholds = DecisionTreeClassifier.threshold_list(X[:, p])
                 for feature_threshold in thresholds:
                     i_cost = DecisionTreeClassifier.cost_function(X, y, k, p, feature_threshold, self.criterion)
@@ -95,17 +98,21 @@ class DecisionTreeClassifier:
             if not splitinfo:
                 return {"label": label_node, "label probability": label_probability}
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
-            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, max_depth, X[decision_boundary], y[decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)
-            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, max_depth, X[~decision_boundary], y[~decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)
+            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, max_depth, X[decision_boundary], y[decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples, max_features)
+            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, max_depth, X[~decision_boundary], y[~decision_boundary], k, numFeatures, best_cost, depth+1,
+                                                                       min_split_samples, max_features)
 
             return splitinfo
 
     def fit(self, X, y):
         numExamples, numFeatures = X.shape
         k = np.unique(y).size
+        if self.max_features > 0 and self.max_features <= 1:
+            self.max_features *= numFeatures
+            self.max_features = max(1, int(self.max_features))
 
         root_cost = DecisionTreeClassifier.impurity_measure(y, k, self.criterion)  # root cost to handle entropy, gini could be capped at 1
-        self.tree_ = DecisionTreeClassifier.split_examples(self, self.max_depth, X, y, k, numFeatures, root_cost, 0, self.min_samples_split)
+        self.tree_ = DecisionTreeClassifier.split_examples(self, self.max_depth, X, y, k, numFeatures, root_cost, 0, self.min_samples_split, self.max_features)
 
     def _predict_one(self, x, node):
         if "label" in node:

@@ -25,3 +25,10 @@ my_y_pred = my_bag_clf.predict(X_test)
 
 print(accuracy_score(y_test, sk_y_pred))
 print(accuracy_score(y_test, my_y_pred))
+
+# [0 0 0 1]
+# [1 0 0 1]
+# 0.9253333333333333
+# 0.8773333333333333
+# 0.904
+# 0.888
