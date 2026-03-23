@@ -4,33 +4,53 @@ from src.lib.CART_decision_tree import DecisionTreeClassifier
 
 
 class BaggingClassifier:
-    def __init__(self, n_estimators, max_samples, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2, voting="soft", bootstrap=True, oob_score=False):
+    def __init__(self, n_estimators, max_samples, max_features, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2, voting="soft",
+                 bootstrap=True, oob_score=False, bootstrap_features=False):
         self.n_estimators = n_estimators
         self.max_samples = max_samples
         self.classifier = classifier
         self.max_depth = max_depth
+        self.max_features = max_features
         self.min_samples_split = min_samples_split
         self.trees_info = None
         self.n_classes_ = None
         self.voting_type = voting
         self.bootstrap = bootstrap
+        self.bootstrap_features = bootstrap_features
         self.oob_score_ = None
         self.calculate_oob = oob_score
         random.seed(random_state)
 
     @staticmethod
-    def sampling(max_samples, X, y, is_bagging):
+    def sampling(X, y, max_samples=None, bootstrap_samples=True, max_features=None, bootstrap_feature=False):
         numExamples, numFeatures = X.shape
         bag_idxs = None
-        if is_bagging:
+        feature_idxs = list(range(0, numFeatures))
+
+        if max_samples is None:
+            max_samples = numExamples
+
+        if bootstrap_samples:
             bag_idxs = random.choices(range(0, numExamples), k=max_samples)
         else:
+            max_samples = min(max_samples, numExamples)
             bag_idxs = random.sample(range(0, numExamples), k=max_samples)
 
-        oob_idxs = [i for i in range(0, numExamples) if i not in bag_idxs]
-        X_b, y_b = X[bag_idxs, :], y[bag_idxs]
+        bag_set = set(bag_idxs)
+        oob_idxs = [i for i in range(0, numExamples) if i not in bag_set]
 
-        return X_b, y_b, np.asarray(oob_idxs)
+        if max_features is None:
+            max_features = numFeatures
+
+        if bootstrap_feature:
+            feature_idxs = random.choices(range(0, numFeatures), k=max_features)
+        else:
+            max_features = min(max_features, numFeatures)
+            feature_idxs = random.sample(range(0, numFeatures), k=max_features)
+
+        X_b, y_b = X[bag_idxs, feature_idxs], y[bag_idxs]
+
+        return X_b, y_b, np.asarray(oob_idxs), feature_idxs
 
     @staticmethod
     def _train_classifier(X, y, max_depth, min_samples_split, classifier):
@@ -44,15 +64,19 @@ class BaggingClassifier:
             self.max_samples *= numExamples
             self.max_samples = int(self.max_samples)
 
+        if self.max_features > 0 and self.max_features <= 1:
+            self.max_features *= numFeatures
+            self.max_features = max(1, int(self.max_features))
+
         self.n_classes_ = np.unique(y).size
         trees = []
         oob_idx_trees = [[] for i in range(numExamples)]
         for i in range(self.n_estimators):
-            X_sample, y_sample, oob_idxs = BaggingClassifier.sampling(self.max_samples, X, y, self.bootstrap)
+            X_sample, y_sample, oob_idxs, feature_idxs = BaggingClassifier.sampling(X, y, self.max_samples, self.bootstrap, self.max_features, self.bootstrap_features)
             i_tree = BaggingClassifier._train_classifier(X_sample, y_sample, self.max_depth, self.min_samples_split, self.classifier)
-            trees.append(i_tree)
+            trees.append((i_tree, feature_idxs))
             for idx in oob_idxs:
-                oob_idx_trees[idx].append(i_tree)
+                oob_idx_trees[idx].append((i_tree, feature_idxs))
 
         if self.calculate_oob:
             correct_cnt = 0
@@ -63,13 +87,13 @@ class BaggingClassifier:
                     continue
                 if self.voting_type == "hard":
                     votes = np.zeros((self.n_classes_))
-                    for tree in oob_idx_trees[i]:
-                        pred_i = tree.predict(x)
+                    for tree, f_idxs in oob_idx_trees[i]:
+                        pred_i = tree.predict(x[:, f_idxs])
                         votes[pred_i[0]] += 1
                 else:
                     added_proba = np.zeros((1, self.n_classes_))
-                    for tree in oob_idx_trees[i]:
-                        pred_i = tree.predict_proba(x)
+                    for tree, f_idxs in oob_idx_trees[i]:
+                        pred_i = tree.predict_proba(x[:, f_idxs])
                         added_proba += pred_i
                     votes = added_proba[0]/len(oob_idx_trees[i])
 
@@ -92,13 +116,13 @@ class BaggingClassifier:
             x = x.reshape(1, -1)
 
         if self.voting_type == "hard":
-            for tree in self.trees_info:
-                prediction_i = tree.predict(x)
+            for tree, f_idxs in self.trees_info:
+                prediction_i = tree.predict(x[:, f_idxs])
                 votes[prediction_i[0]] += 1
         else:
             added_proba = np.zeros((1, self.n_classes_))
-            for tree in self.trees_info:
-                prediction_i = tree.predict_proba(x)
+            for tree, f_idxs in self.trees_info:
+                prediction_i = tree.predict_proba(x[:, f_idxs])
                 added_proba += prediction_i
             votes = added_proba[0]/self.n_estimators
 
