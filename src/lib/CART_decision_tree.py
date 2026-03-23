@@ -91,9 +91,9 @@ class DecisionTreeClassifier:
                         splitinfo = {"feature": p, "threshold": feature_threshold, "left": None, "right": None}
 
             if best_cost >= prev_cost:
-                return {"label": label_node, "label_probability": label_probability}
+                return {"label": label_node, "label probability": label_probability}
             if not splitinfo:
-                return {"label": label_node, "label_probability": label_probability}
+                return {"label": label_node, "label probability": label_probability}
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
             splitinfo["left"] = DecisionTreeClassifier.split_examples(self, max_depth, X[decision_boundary], y[decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)
             splitinfo["right"] = DecisionTreeClassifier.split_examples(self, max_depth, X[~decision_boundary], y[~decision_boundary], k, numFeatures, best_cost, depth+1, min_split_samples)

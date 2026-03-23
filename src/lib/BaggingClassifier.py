@@ -4,7 +4,7 @@ from src.lib.CART_decision_tree import DecisionTreeClassifier
 
 
 class BaggingClassifier:
-    def __init__(self, n_estimators, max_samples, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2):
+    def __init__(self, n_estimators, max_samples, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2, voting="soft"):
         self.n_estimators = n_estimators
         self.max_samples = max_samples
         self.classifier = classifier
@@ -12,6 +12,7 @@ class BaggingClassifier:
         self.min_samples_split = min_samples_split
         self.trees_info = None
         self.n_classes_ = None
+        self.voting_type = voting
         random.seed(random_state)
 
     @staticmethod
@@ -52,11 +53,18 @@ class BaggingClassifier:
         elif x.ndim == 1:
             x = x.reshape(1, -1)
 
-        for tree in self.trees_info:
-            prediction_i = tree.predict(x)
-            votes[prediction_i[0]] += 1
+        if self.voting_type == "hard":
+            for tree in self.trees_info:
+                prediction_i = tree.predict(x)
+                votes[prediction_i[0]] += 1
+        else:
+            added_proba = np.zeros((1, self.n_classes_))
+            for tree in self.trees_info:
+                prediction_i = tree.predict_proba(x)
+                added_proba += prediction_i
+            votes = added_proba/self.n_estimators
 
-        return np.argmax(votes)
+        return np.argmax(votes[0])
 
     def predict(self, X):
         predictions = []
