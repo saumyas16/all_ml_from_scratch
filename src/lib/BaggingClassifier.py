@@ -4,7 +4,7 @@ from src.lib.CART_decision_tree import DecisionTreeClassifier
 
 
 class BaggingClassifier:
-    def __init__(self, n_estimators, max_samples, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2, voting="soft"):
+    def __init__(self, n_estimators, max_samples, random_state, classifier=DecisionTreeClassifier, max_depth=2, min_samples_split=2, voting="soft", bootstrap=True):
         self.n_estimators = n_estimators
         self.max_samples = max_samples
         self.classifier = classifier
@@ -13,12 +13,18 @@ class BaggingClassifier:
         self.trees_info = None
         self.n_classes_ = None
         self.voting_type = voting
+        self.bootstrap = bootstrap
         random.seed(random_state)
 
     @staticmethod
-    def bagging_samples(max_samples, X, y):
+    def sampling(max_samples, X, y, is_bagging):
         numExamples, numFeatures = X.shape
-        bag_idxs = random.choices(range(0, numExamples), k=max_samples)
+        bag_idxs = None
+        if is_bagging:
+            bag_idxs = random.choices(range(0, numExamples), k=max_samples)
+        else:
+            bag_idxs = random.sample(range(0, numExamples), k=max_samples)
+
         X_b, y_b = X[bag_idxs, :], y[bag_idxs]
 
         return X_b, y_b
@@ -38,7 +44,7 @@ class BaggingClassifier:
         self.n_classes_ = np.unique(y).size
         trees = []
         for i in range(self.n_estimators):
-            X_sample, y_sample = BaggingClassifier.bagging_samples(self.max_samples, X, y)
+            X_sample, y_sample = BaggingClassifier.sampling(self.max_samples, X, y, self.bootstrap)
             i_tree = BaggingClassifier._train_classifier(X_sample, y_sample, self.max_depth, self.min_samples_split, self.classifier)
             trees.append(i_tree)
 
