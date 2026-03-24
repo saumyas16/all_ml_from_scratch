@@ -4,7 +4,7 @@ from src.lib.CART_decision_tree import DecisionTreeClassifier
 
 
 class RandomForestClassifier:
-    def __init__(self, n_estimators, random_state, max_features=1.0, max_samples=1, max_depth=2, min_samples_split=2, voting="soft",
+    def __init__(self, n_estimators, random_state=None, max_features=1.0, max_samples=1, max_depth=2, min_samples_split=2, voting="soft",
                  bootstrap=True, oob_score=False, bootstrap_features=False):
         self.n_estimators = n_estimators
         self.max_samples = max_samples
@@ -18,10 +18,10 @@ class RandomForestClassifier:
         self.bootstrap_features = bootstrap_features
         self.oob_score_ = None
         self.calculate_oob = oob_score
-        self.rng = random.Random(random_state)
+        self.rng = random.Random(random_state) or random
+        self.feature_importances_ = None
 
-    @staticmethod
-    def sampling(X, y, max_samples=None, bootstrap_samples=True):
+    def sampling(self, X, y, max_samples=None, bootstrap_samples=True):
         numExamples, numFeatures = X.shape
         bag_idxs = None
 
@@ -29,10 +29,10 @@ class RandomForestClassifier:
             max_samples = numExamples
 
         if bootstrap_samples:
-            bag_idxs = random.choices(range(0, numExamples), k=max_samples)
+            bag_idxs = self.rng.choices(range(0, numExamples), k=max_samples)
         else:
             max_samples = min(max_samples, numExamples)
-            bag_idxs = random.sample(range(0, numExamples), k=max_samples)
+            bag_idxs = self.rng.sample(range(0, numExamples), k=max_samples)
 
         bag_set = set(bag_idxs)
         oob_idxs = [i for i in range(0, numExamples) if i not in bag_set]
@@ -48,6 +48,8 @@ class RandomForestClassifier:
         return tree_clf
 
     def fit(self, X, y):
+        X = np.asarray(X)
+        y = np.asarray(y)
         numExamples, numFeatures = X.shape
         if self.max_samples > 0 and self.max_samples <= 1:
             self.max_samples *= numExamples
@@ -63,12 +65,17 @@ class RandomForestClassifier:
         self.n_classes_ = np.unique(y).size
         trees = []
         oob_idx_trees = [[] for i in range(numExamples)]
+        self.feature_importances_ = np.zeros(numFeatures)
+
         for i in range(self.n_estimators):
-            X_sample, y_sample, oob_idxs = RandomForestClassifier.sampling(X, y, self.max_samples, self.bootstrap)
+            X_sample, y_sample, oob_idxs = RandomForestClassifier.sampling(self, X, y, self.max_samples, self.bootstrap)
             i_tree = RandomForestClassifier._train_classifier(X_sample, y_sample, self.max_depth, self.min_samples_split, self.max_features, DecisionTreeClassifier)
             trees.append(i_tree)
             for idx in oob_idxs:
                 oob_idx_trees[idx].append(i_tree)
+            self.feature_importances_ += i_tree._rf_feature_importance
+
+        self.feature_importances_ /= np.sum(self.feature_importances_)
 
         if self.calculate_oob:
             correct_cnt = 0

@@ -14,6 +14,7 @@ class DecisionTreeClassifier:
         self.min_samples_split = min_samples_split
         self.max_features = max_features
         self.feature_importances_ = None
+        self._rf_feature_importance = None
         self.n_samples = None
 
     @staticmethod
@@ -74,13 +75,13 @@ class DecisionTreeClassifier:
             threshold.append((X[i]+X[i+1])/2)
         return np.unique(threshold)
 
-    def split_examples(self, max_depth, X, y, k, numFeatures, depth, min_split_samples, max_features, feature_importance):
+    def split_examples(self, X, y, k, numFeatures, curr_depth):
         label_node = DecisionTreeClassifier.node_label(y, k)
         label_probability = DecisionTreeClassifier.node_label_probability(y, k)
         node_impurity = DecisionTreeClassifier.impurity_measure(y, k, self.criterion)
-        if max_depth is not None and depth >= max_depth:
+        if self.max_depth is not None and curr_depth >= self.max_depth:
             return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
-        elif y.size < min_split_samples:
+        elif y.size < self.min_samples_split:
             return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
         elif np.unique(y).size == 1:
             return {"label": y[0], "label probability": 1.0, "gini": 0.0}
@@ -89,7 +90,7 @@ class DecisionTreeClassifier:
             best_cost = float("inf")
             splitinfo = {}
 
-            feature_subset = random.sample(range(numFeatures), max_features)
+            feature_subset = random.sample(range(numFeatures), self.max_features)
             for p in feature_subset:
                 thresholds = DecisionTreeClassifier.threshold_list(X[:, p])
                 for feature_threshold in thresholds:
@@ -103,16 +104,18 @@ class DecisionTreeClassifier:
             if not splitinfo:
                 return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
 
-            feature_importance[splitinfo["feature"]] += (node_impurity-best_cost)*(y.size / self.n_samples)
+            self.feature_importances_[splitinfo["feature"]] += (node_impurity-best_cost)*(y.size / self.n_samples)
+            self._rf_feature_importance[splitinfo["feature"]] += (node_impurity-best_cost)*(y.size)
+
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
-            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, max_depth, X[decision_boundary], y[decision_boundary], k, numFeatures, depth+1,
-                                                                      min_split_samples, max_features, feature_importance)
-            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, max_depth, X[~decision_boundary], y[~decision_boundary], k, numFeatures, depth+1,
-                                                                       min_split_samples, max_features, feature_importance)
+            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, X[decision_boundary], y[decision_boundary], k, numFeatures, curr_depth+1)
+            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, X[~decision_boundary], y[~decision_boundary], k, numFeatures, curr_depth+1)
 
             return splitinfo
 
     def fit(self, X, y):
+        X = np.asarray(X)
+        y = np.asarray(y)
         numExamples, numFeatures = X.shape
         k = np.unique(y).size
         if self.max_features > 0 and self.max_features <= 1:
@@ -121,10 +124,11 @@ class DecisionTreeClassifier:
 
         self.n_samples = numExamples
         self.feature_importances_ = np.zeros(numFeatures)
+        # will be used for feature importance calculation in random forest
+        self._rf_feature_importance = np.zeros(numFeatures)
 
-        self.tree_ = DecisionTreeClassifier.split_examples(self, self.max_depth, X, y, k, numFeatures, 0, self.min_samples_split, self.max_features, self.feature_importances_)
+        self.tree_ = DecisionTreeClassifier.split_examples(self, X, y, k, numFeatures, 0)
 
-        # do we normalise it for each decision tree?
         self.feature_importances_ /= np.sum(self.feature_importances_)
 
     def _predict_one(self, x, node):
