@@ -14,3 +14,6 @@ my_tree_reg.fit(X_quad, y_quad)
 
 print(tree_reg.predict([[0.038]]))
 print(my_tree_reg.predict([[0.038]]))
+
+# [0.03758823]
+# [0.03758823]

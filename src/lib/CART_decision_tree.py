@@ -18,53 +18,54 @@ class DecisionTreeClassifier:
         self.n_samples = None
 
     @staticmethod
-    def impurity_measure(node_y, k, criterion):
-        node_size = node_y.size
+    def impurity_measure(node_y, k, criterion, w):
         if criterion == "gini":
             gini = 1.0
             for i in range(k):
-                p_i = np.sum(node_y == i) / node_size
+                p_i = np.sum(w[node_y == i]) / np.sum(w)
                 gini -= p_i ** 2
             return gini
         else:
             entropy = 0.0
             for i in range(k):
-                p_i = np.sum(node_y == i) / node_size
+                p_i = np.sum(w[node_y == i]) / np.sum(w)
                 if p_i > 0:
                     entropy -= p_i * math.log2(p_i)
             return entropy
 
     @staticmethod
-    def node_label(node_y, k):
+    def node_label(node_y, k, w):
         max_k = 0
         max_count = 0
         for i in range(k):
-            class_count = np.sum(node_y == i)
+            class_count = np.sum(w[node_y == i])
             if class_count > max_count:
                 max_count = class_count
                 max_k = i
         return max_k
 
     @staticmethod
-    def node_label_probability(node_y, k):
+    def node_label_probability(node_y, k, w):
         k_proba = []
         for i in range(k):
-            class_count = np.sum(node_y == i)
-            k_proba.append(class_count/node_y.size)
+            class_count = np.sum(w[node_y == i])
+            k_proba.append(class_count/np.sum(w))
         return np.asarray(k_proba)
 
     @staticmethod
-    def cost_function(node_X, node_y, k, feature_idx, feature_threshold, criterion):
+    def cost_function(node_X, node_y, k, feature_idx, feature_threshold, criterion, weights):
         node_left = node_y[node_X[:, feature_idx] <= feature_threshold]
         node_right = node_y[node_X[:, feature_idx] > feature_threshold]
+        w_left = weights[node_X[:, feature_idx] <= feature_threshold]
+        w_right = weights[node_X[:, feature_idx] > feature_threshold]
 
         if node_left.size == 0 or node_right.size == 0:
             return 1
 
-        impurity_left = DecisionTreeClassifier.impurity_measure(node_left, k, criterion)
-        impurity_right = DecisionTreeClassifier.impurity_measure(node_right, k, criterion)
+        impurity_left = DecisionTreeClassifier.impurity_measure(node_left, k, criterion, w_left)
+        impurity_right = DecisionTreeClassifier.impurity_measure(node_right, k, criterion, w_right)
 
-        cost_value = ((node_left.size)*impurity_left + (node_right.size)*impurity_right)/node_y.size
+        cost_value = ((np.sum(w_left))*impurity_left + (np.sum(w_right))*impurity_right)/np.sum(weights)
         return cost_value
 
     @staticmethod
@@ -75,16 +76,16 @@ class DecisionTreeClassifier:
             threshold.append((X[i]+X[i+1])/2)
         return np.unique(threshold)
 
-    def split_examples(self, X, y, k, numFeatures, curr_depth):
-        label_node = DecisionTreeClassifier.node_label(y, k)
-        label_probability = DecisionTreeClassifier.node_label_probability(y, k)
-        node_impurity = DecisionTreeClassifier.impurity_measure(y, k, self.criterion)
+    def split_examples(self, X, y, k, sample_weights, numFeatures, curr_depth):
+        label_node = DecisionTreeClassifier.node_label(y, k, sample_weights)
+        label_probability = DecisionTreeClassifier.node_label_probability(y, k, sample_weights)
+        node_impurity = DecisionTreeClassifier.impurity_measure(y, k, self.criterion, sample_weights)
         if self.max_depth is not None and curr_depth >= self.max_depth:
-            return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
+            return {"label": label_node, "label probability": label_probability, "impurity measure": round(node_impurity, ndigits=3)}
         elif y.size < self.min_samples_split:
-            return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
+            return {"label": label_node, "label probability": label_probability, "impurity measure": round(node_impurity, ndigits=3)}
         elif np.unique(y).size == 1:
-            return {"label": y[0], "label probability": 1.0, "gini": 0.0}
+            return {"label": y[0], "label probability": 1.0, "impurity measure": 0.0}
         else:
             # best_cost = 1.0 # works for gini but not entropy
             best_cost = float("inf")
@@ -94,29 +95,34 @@ class DecisionTreeClassifier:
             for p in feature_subset:
                 thresholds = DecisionTreeClassifier.threshold_list(X[:, p])
                 for feature_threshold in thresholds:
-                    i_cost = DecisionTreeClassifier.cost_function(X, y, k, p, feature_threshold, self.criterion)
+                    i_cost = DecisionTreeClassifier.cost_function(X, y, k, p, feature_threshold, self.criterion, sample_weights)
                     if i_cost < best_cost:
                         best_cost = i_cost
                         splitinfo = {"feature": p, "threshold": feature_threshold, "left": None, "right": None}
 
             if best_cost >= node_impurity:
-                return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
+                return {"label": label_node, "label probability": label_probability, "impurity measure": round(node_impurity, ndigits=3)}
             if not splitinfo:
-                return {"label": label_node, "label probability": label_probability, "gini": round(node_impurity, ndigits=3)}
+                return {"label": label_node, "label probability": label_probability, "impurity measure": round(node_impurity, ndigits=3)}
 
-            self.feature_importances_[splitinfo["feature"]] += (node_impurity-best_cost)*(y.size / self.n_samples)
+            self.feature_importances_[splitinfo["feature"]] += (node_impurity-best_cost)*(np.sum(sample_weights) / self.total_weight)
             self._rf_feature_importance[splitinfo["feature"]] += (node_impurity-best_cost)*(y.size)
 
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
-            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, X[decision_boundary], y[decision_boundary], k, numFeatures, curr_depth+1)
-            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, X[~decision_boundary], y[~decision_boundary], k, numFeatures, curr_depth+1)
+            splitinfo["left"] = DecisionTreeClassifier.split_examples(self, X[decision_boundary], y[decision_boundary], k, sample_weights[decision_boundary], numFeatures, curr_depth+1)
+            splitinfo["right"] = DecisionTreeClassifier.split_examples(self, X[~decision_boundary], y[~decision_boundary], k, sample_weights[~decision_boundary], numFeatures, curr_depth+1)
 
             return splitinfo
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weights=None):
         X = np.asarray(X)
-        y = np.asarray(y)
+        y = np.asarray(y).ravel()
         numExamples, numFeatures = X.shape
+        if sample_weights is None:
+            sample_weights = np.ones(len(y))
+        else:
+            sample_weights = np.asarray(sample_weights)
+
         k = np.unique(y).size
         if self.max_features > 0 and self.max_features <= 1:
             self.max_features *= numFeatures
@@ -126,8 +132,9 @@ class DecisionTreeClassifier:
         self.feature_importances_ = np.zeros(numFeatures)
         # will be used for feature importance calculation in random forest
         self._rf_feature_importance = np.zeros(numFeatures)
+        self.total_weight = np.sum(sample_weights)
 
-        self.tree_ = DecisionTreeClassifier.split_examples(self, X, y, k, numFeatures, 0)
+        self.tree_ = DecisionTreeClassifier.split_examples(self, X, y, k, sample_weights, numFeatures, 0)
 
         self.feature_importances_ /= np.sum(self.feature_importances_)
 

@@ -14,29 +14,33 @@ class DecisionTreeRegressor:
         self.feature_importances_ = None
         self._rf_feature_importance = None
         self.n_samples = None
+        self.total_weight = None
 
     @staticmethod
-    def mse_measure(node_y):
-        y_mean = np.mean(node_y)
-        mse = np.mean((y_mean - node_y)**2)
+    def mse_measure(node_y, w):
+        y_mean = np.sum(w * node_y) / np.sum(w)
+        mse = np.sum(w * (node_y - y_mean)**2) / np.sum(w)
         return mse
 
     @staticmethod
-    def node_val(node_y):
-        return np.mean(node_y)
+    def node_val(node_y, w):
+        return np.sum(w * node_y) / np.sum(w)
 
     @staticmethod
-    def cost_function(node_X, node_y, feature_idx, feature_threshold):
+    def cost_function(node_X, node_y, feature_idx, feature_threshold, weights):
         node_left = node_y[node_X[:, feature_idx] <= feature_threshold]
         node_right = node_y[node_X[:, feature_idx] > feature_threshold]
+        weight_left = weights[node_X[:, feature_idx] <= feature_threshold]
+        weight_right = weights[node_X[:, feature_idx] > feature_threshold]
 
         if node_left.size == 0 or node_right.size == 0:
             return float("inf")
 
-        mse_left = DecisionTreeRegressor.mse_measure(node_left)
-        mse_right = DecisionTreeRegressor.mse_measure(node_right)
+        mse_left = DecisionTreeRegressor.mse_measure(node_left, weight_left)
+        mse_right = DecisionTreeRegressor.mse_measure(node_right, weight_right)
 
-        cost_value = ((node_left.size)*mse_left + (node_right.size)*mse_right)/node_y.size
+        cost_value = (np.sum(weight_left) * mse_left + np.sum(weight_right) * mse_right) / np.sum(weights)
+
         return cost_value
 
     @staticmethod
@@ -47,9 +51,9 @@ class DecisionTreeRegressor:
             threshold.append((X[i]+X[i+1])/2)
         return np.unique(threshold)
 
-    def split_examples(self, X, y, numFeatures, curr_depth):
-        node_value = DecisionTreeRegressor.node_val(y)
-        node_mse = DecisionTreeRegressor.mse_measure(y)
+    def split_examples(self, X, y, sample_weights, numFeatures, curr_depth):
+        node_value = DecisionTreeRegressor.node_val(y, sample_weights)
+        node_mse = DecisionTreeRegressor.mse_measure(y, sample_weights)
         if self.max_depth is not None and curr_depth >= self.max_depth:
             return {"value": node_value, "mse": node_mse}
         elif y.size < self.min_samples_split:
@@ -64,7 +68,7 @@ class DecisionTreeRegressor:
             for p in feature_subset:
                 thresholds = DecisionTreeRegressor.threshold_list(X[:, p])
                 for feature_threshold in thresholds:
-                    i_cost = DecisionTreeRegressor.cost_function(X, y, p, feature_threshold)
+                    i_cost = DecisionTreeRegressor.cost_function(X, y, p, feature_threshold, sample_weights)
                     if i_cost < best_cost:
                         best_cost = i_cost
                         splitinfo = {"feature": p, "threshold": feature_threshold, "left": None, "right": None}
@@ -74,18 +78,22 @@ class DecisionTreeRegressor:
             if not splitinfo:
                 return {"value": node_value, "mse": node_mse}
 
-            self.feature_importances_[splitinfo["feature"]] += (node_mse-best_cost)*(y.size / self.n_samples)
+            self.feature_importances_[splitinfo["feature"]] += (node_mse-best_cost)*(np.sum(sample_weights) / self.total_weight)
             self._rf_feature_importance[splitinfo["feature"]] += (node_mse-best_cost)*(y.size)
 
             decision_boundary = X[:, splitinfo["feature"]] <= splitinfo["threshold"]
-            splitinfo["left"] = DecisionTreeRegressor.split_examples(self, X[decision_boundary], y[decision_boundary], numFeatures, curr_depth+1)
-            splitinfo["right"] = DecisionTreeRegressor.split_examples(self, X[~decision_boundary], y[~decision_boundary], numFeatures, curr_depth+1)
+            splitinfo["left"] = DecisionTreeRegressor.split_examples(self, X[decision_boundary], y[decision_boundary], sample_weights[decision_boundary], numFeatures, curr_depth+1)
+            splitinfo["right"] = DecisionTreeRegressor.split_examples(self, X[~decision_boundary], y[~decision_boundary], sample_weights[~decision_boundary], numFeatures, curr_depth+1)
 
             return splitinfo
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weights=None):
         X = np.asarray(X)
-        y = np.asarray(y)
+        y = np.asarray(y).ravel()
+        if sample_weights is None:
+            sample_weights = np.ones(len(y))
+        else:
+            sample_weights = np.asarray(sample_weights)
         if X.ndim == 0:
             X = X.reshape(1, 1)
         elif X.ndim == 1:
@@ -94,12 +102,13 @@ class DecisionTreeRegressor:
         self.n_samples = numExamples
         self.feature_importances_ = np.zeros(numFeatures)
         self._rf_feature_importance = np.zeros(numFeatures)
+        self.total_weight = np.sum(sample_weights)
 
         if self.max_features > 0 and self.max_features <= 1:
             self.max_features *= numFeatures
             self.max_features = max(1, int(self.max_features))
 
-        self.tree_ = DecisionTreeRegressor.split_examples(self, X, y, numFeatures, 0)
+        self.tree_ = DecisionTreeRegressor.split_examples(self, X, y, sample_weights, numFeatures, 0)
 
         self.feature_importances_ /= np.sum(self.feature_importances_)
 
