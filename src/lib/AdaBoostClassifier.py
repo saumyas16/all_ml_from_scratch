@@ -21,7 +21,7 @@ class AdaBoostClassifier:
         return error_rate
 
     @staticmethod
-    def predictor_weight(predicted_y, X, y, weights_examples, learning_rate, k):
+    def predictor_weight(predicted_y, y, weights_examples, learning_rate, k):
         r = AdaBoostClassifier.weighted_error_rate(predicted_y, y, weights_examples)
         eps = 1e-10
         r = np.clip(r, eps, 1 - eps)
@@ -58,7 +58,7 @@ class AdaBoostClassifier:
         for i in range(self.n_estimators):
             i_predictor = AdaBoostClassifier._train_classifier(X, y, self.classifier, weights_examples)
             predicted_y = i_predictor.predict(X)
-            weight_i = AdaBoostClassifier.predictor_weight(predicted_y, X, y, weights_examples, self.learning_rate, self.n_classes_)
+            weight_i = AdaBoostClassifier.predictor_weight(predicted_y, y, weights_examples, self.learning_rate, self.n_classes_)
             predictors.append((i_predictor, weight_i))
             weights_examples = AdaBoostClassifier.update_weights(weights_examples, y, predicted_y, weight_i)
 

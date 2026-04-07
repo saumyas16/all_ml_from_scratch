@@ -41,8 +41,8 @@ class RandomForestRegressor:
         return X_b, y_b, np.asarray(oob_idxs)
 
     @staticmethod
-    def _train_classifier(X, y, max_depth, min_samples_split, max_features, classifier):
-        tree_clf = classifier(max_depth=max_depth, min_samples_split=min_samples_split, max_features=max_features)
+    def _train_regressor(X, y, max_depth, min_samples_split, max_features, regressor):
+        tree_clf = regressor(max_depth=max_depth, min_samples_split=min_samples_split, max_features=max_features)
         tree_clf.fit(X, y)
         return tree_clf
 
@@ -65,7 +65,7 @@ class RandomForestRegressor:
 
         for i in range(self.n_estimators):
             X_sample, y_sample, oob_idxs = RandomForestRegressor.sampling(self, X, y, self.max_samples, self.bootstrap)
-            i_tree = RandomForestRegressor._train_classifier(X_sample, y_sample, self.max_depth, self.min_samples_split, self.max_features, DecisionTreeRegressor)
+            i_tree = RandomForestRegressor._train_regressor(X_sample, y_sample, self.max_depth, self.min_samples_split, self.max_features, DecisionTreeRegressor)
             trees.append(i_tree)
             for idx in oob_idxs:
                 oob_idx_trees[idx].append(i_tree)
