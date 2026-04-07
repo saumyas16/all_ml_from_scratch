@@ -5,7 +5,7 @@ np.set_printoptions(legacy='1.25')
 
 
 class DecisionTreeRegressor:
-    def __init__(self, max_features=1, max_depth=None, min_samples_split=2):
+    def __init__(self, max_features=1.0, max_depth=None, min_samples_split=2):
         self.max_depth = max_depth
         self.split_info = {}
         self.tree_ = None

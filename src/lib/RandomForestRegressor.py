@@ -12,7 +12,6 @@ class RandomForestRegressor:
         self.max_features = max_features
         self.min_samples_split = min_samples_split
         self.trees_info = None
-        self.n_classes_ = None
         self.bootstrap = bootstrap
         self.bootstrap_features = bootstrap_features
         self.oob_score_ = None
@@ -42,9 +41,9 @@ class RandomForestRegressor:
 
     @staticmethod
     def _train_regressor(X, y, max_depth, min_samples_split, max_features, regressor):
-        tree_clf = regressor(max_depth=max_depth, min_samples_split=min_samples_split, max_features=max_features)
-        tree_clf.fit(X, y)
-        return tree_clf
+        tree_reg = regressor(max_depth=max_depth, min_samples_split=min_samples_split, max_features=max_features)
+        tree_reg.fit(X, y)
+        return tree_reg
 
     def fit(self, X, y):
         X = np.asarray(X)
@@ -58,7 +57,6 @@ class RandomForestRegressor:
             self.max_features *= numFeatures
             self.max_features = max(1, int(self.max_features))
 
-        self.n_classes_ = np.unique(y).size
         trees = []
         oob_idx_trees = [[] for i in range(numExamples)]
         self.feature_importances_ = np.zeros(numFeatures)
