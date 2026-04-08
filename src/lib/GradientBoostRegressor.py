@@ -4,7 +4,7 @@ from src.lib.CART_regressor import DecisionTreeRegressor
 
 
 class GradientBoostRegressor:
-    def __init__(self, n_estimators, max_depth, min_samples_split=2, n_iter_no_change=None, max_features=1.0, subsample=1, random_state=None,
+    def __init__(self, n_estimators, max_depth, min_samples_split=2, n_iter_no_change=None, max_features=1.0, subsample=1.0, random_state=None,
                  learning_rate=1.0, validation_fraction=0.1, tol=0.0001):
         self.n_estimators = n_estimators
         self.n_iter_no_change = n_iter_no_change
@@ -56,8 +56,14 @@ class GradientBoostRegressor:
         if val_X is not None:
             pred_val = self.init_
         predictors = []
+
         for i in range(self.n_estimators):
-            i_reg = GradientBoostRegressor._train_regressor(DecisionTreeRegressor, X, residual, self.max_depth, self.min_samples_split, self.max_features)
+            numSamples = max(1, int(self.subsample * y.size))
+            train_idxs = self.rng.sample(range(0, y.size), k=numSamples)
+            X_train = X[train_idxs, :]
+            residual_train = residual[train_idxs]
+
+            i_reg = GradientBoostRegressor._train_regressor(DecisionTreeRegressor, X_train, residual_train, self.max_depth, self.min_samples_split, self.max_features)
             y_pred = i_reg.predict(X)
             residual -= self.learning_rate * y_pred
             predictors.append(i_reg)
@@ -72,7 +78,7 @@ class GradientBoostRegressor:
                     best_loss = curr_loss
 
                 if cnt >= self.n_iter_no_change:
-                    self.n_estimators_ = i
+                    self.n_estimators_ = i + 1
                     break
         if self.n_estimators_ == 0:
             self.n_estimators_ = self.n_estimators

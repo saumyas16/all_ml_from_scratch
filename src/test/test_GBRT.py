@@ -22,10 +22,20 @@ gbrt2.fit(X, y)
 my_gbrt2 = myGBRT(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42)
 my_gbrt2.fit(X, y)
 
+gbrt3 = GradientBoostingRegressor(max_depth=2, n_estimators=500, learning_rate=0.05, n_iter_no_change=10, random_state=42, subsample=0.25)
+gbrt3.fit(X, y)
+my_gbrt3 = myGBRT(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42, subsample=0.25)
+my_gbrt3.fit(X, y)
+
 print(gbrt2.predict(X[:4]))
 print(gbrt2.n_estimators_)
 print(my_gbrt2.predict(X[:4]))
 print(my_gbrt2.n_estimators_)
+
+print(gbrt3.predict(X[:4]))
+print(gbrt3.n_estimators_)
+print(my_gbrt3.predict(X[:4]))
+print(my_gbrt3.n_estimators_)
 
 # [0.32784435 0.02764544 0.43929862 0.02764544]
 # [0.32784435 0.02764544 0.43929862 0.02764544]
@@ -33,3 +43,7 @@ print(my_gbrt2.n_estimators_)
 # 83
 # [0.1930453  0.03249206 0.45546829 0.03249206]
 # 89
+# [0.25378994 0.0430671  0.40215049 0.04788272]
+# 56
+# [0.22143108 0.03978558 0.4332719  0.0341091 ]
+# 70
