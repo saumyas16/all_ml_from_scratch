@@ -2,6 +2,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.datasets import make_moons
 from sklearn.model_selection import train_test_split
 from src.lib.GradientBoostingClassifier import GradientBoostClassifier as myGBC
+from src.lib.GradientBoostingClassifier2 import GradientBoostClassifier as myGBC2
 
 X, y = make_moons(n_samples=500, noise=0.30, random_state=42)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
@@ -19,18 +20,41 @@ gbc2 = GradientBoostingClassifier(max_depth=2, n_estimators=500, learning_rate=0
 gbc2.fit(X_train, y_train)
 my_gbc2 = myGBC(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42)
 my_gbc2.fit(X_train, y_train)
+my_gbc5 = myGBC2(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42)
+my_gbc5.fit(X_train, y_train)
 
 gbc3 = GradientBoostingClassifier(max_depth=2, n_estimators=500, learning_rate=0.05, n_iter_no_change=10, random_state=42, subsample=0.25)
 gbc3.fit(X_train, y_train)
 my_gbc3 = myGBC(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42, subsample=0.25)
 my_gbc3.fit(X_train, y_train)
+my_gbc4 = myGBC2(n_estimators=500, max_depth=2, learning_rate=0.05, n_iter_no_change=10, random_state=42, subsample=0.25)
+my_gbc4.fit(X_train, y_train)
 
 print(gbc2.predict(X_test[:4]))
 print(gbc2.n_estimators_)
 print(my_gbc2.predict(X_test[:4]))
 print(my_gbc2.n_estimators_)
+print(my_gbc5.predict(X_test[:4]))
+print(my_gbc5.n_estimators_)
 
 print(gbc3.predict(X_test[:4]))
 print(gbc3.n_estimators_)
 print(my_gbc3.predict(X_test[:4]))
 print(my_gbc3.n_estimators_)
+print(my_gbc4.predict(X_test[:4]))
+print(my_gbc4.n_estimators_)
+
+# [1 0 0 1]
+# [0 0 0 1]
+# [1 0 0 1]
+# 152
+# [0 0 0 1]
+# 500
+# [0 0 0 1]
+# 211
+# [1 0 0 1]
+# 104
+# [0 0 0 1]
+# 500
+# [0 0 0 1]
+# 389
