@@ -13,6 +13,11 @@ class PCA:
 
         variance_ratio_ = s ** 2 / np.sum(s ** 2)
 
+        if self.n_components > 0.0 and self.n_components < 1.0:
+            variance_sum = np.cumsum(variance_ratio_)
+            d = np.argmax(variance_sum >= self.n_components) + 1
+            self.n_components = d
+
         W_d = Vt[:self.n_components].T
         X_d = X_centered @ W_d
         self.explained_variance_ratio_ = variance_ratio_[:self.n_components]
